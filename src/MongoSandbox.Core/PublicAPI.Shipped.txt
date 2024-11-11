@@ -1,0 +1,31 @@
+#nullable enable
+MongoSandbox.IMongoRunner
+MongoSandbox.IMongoRunner.ConnectionString.get -> string!
+MongoSandbox.IMongoRunner.Export(string! database, string! collection, string! outputFilePath, string? additionalArguments = null) -> void
+MongoSandbox.IMongoRunner.Import(string! database, string! collection, string! inputFilePath, string? additionalArguments = null, bool drop = false) -> void
+MongoSandbox.Logger
+MongoSandbox.MongoRunner
+MongoSandbox.MongoRunnerOptions
+MongoSandbox.MongoRunnerOptions.AdditionalArguments.get -> string?
+MongoSandbox.MongoRunnerOptions.AdditionalArguments.set -> void
+MongoSandbox.MongoRunnerOptions.BinaryDirectory.get -> string?
+MongoSandbox.MongoRunnerOptions.BinaryDirectory.set -> void
+MongoSandbox.MongoRunnerOptions.ConnectionTimeout.get -> System.TimeSpan
+MongoSandbox.MongoRunnerOptions.ConnectionTimeout.set -> void
+MongoSandbox.MongoRunnerOptions.DataDirectory.get -> string?
+MongoSandbox.MongoRunnerOptions.DataDirectory.set -> void
+MongoSandbox.MongoRunnerOptions.MongoRunnerOptions() -> void
+MongoSandbox.MongoRunnerOptions.MongoRunnerOptions(MongoSandbox.MongoRunnerOptions! options) -> void
+MongoSandbox.MongoRunnerOptions.ReplicaSetSetupTimeout.get -> System.TimeSpan
+MongoSandbox.MongoRunnerOptions.ReplicaSetSetupTimeout.set -> void
+MongoSandbox.MongoRunnerOptions.StandardErrorLogger.get -> MongoSandbox.Logger?
+MongoSandbox.MongoRunnerOptions.StandardErrorLogger.set -> void
+MongoSandbox.MongoRunnerOptions.StandardOuputLogger.get -> MongoSandbox.Logger?
+MongoSandbox.MongoRunnerOptions.StandardOuputLogger.set -> void
+MongoSandbox.MongoRunnerOptions.UseSingleNodeReplicaSet.get -> bool
+MongoSandbox.MongoRunnerOptions.UseSingleNodeReplicaSet.set -> void
+MongoSandbox.MongoRunnerOptions.MongoPort.get -> int?
+MongoSandbox.MongoRunnerOptions.MongoPort.set -> void
+MongoSandbox.MongoRunnerOptions.KillMongoProcessesWhenCurrentProcessExits.get -> bool
+MongoSandbox.MongoRunnerOptions.KillMongoProcessesWhenCurrentProcessExits.set -> void
+static MongoSandbox.MongoRunner.Run(MongoSandbox.MongoRunnerOptions? options = null) -> MongoSandbox.IMongoRunner!

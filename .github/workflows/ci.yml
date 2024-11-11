@@ -1,0 +1,23 @@
+name: CI build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths-ignore: ["*.md"]
+  pull_request:
+    branches: [main]
+    paths-ignore: ["*.md"]
+
+jobs:
+  build-test:
+    uses: ./.github/workflows/_build-test.yml
+
+  clean:
+    if: always()
+    runs-on: ubuntu-latest
+    needs: [build-test]
+    steps:
+      - uses: geekyeggo/delete-artifact@v5
+        with:
+          name: ${{ needs.build-test.outputs.artifact-name }}

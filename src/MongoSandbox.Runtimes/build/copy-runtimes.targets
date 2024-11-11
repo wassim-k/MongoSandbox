@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <_MongoSandboxRid Condition="$([MSBuild]::IsOSPlatform('Windows'))">win-x64</_MongoSandboxRid>
+    <_MongoSandboxRid Condition="$([MSBuild]::IsOSPlatform('Linux'))">linux-x64</_MongoSandboxRid>
+    <_MongoSandboxRid Condition="$([MSBuild]::IsOSPlatform('OSX'))">osx-x64</_MongoSandboxRid>
+  </PropertyGroup>
+
+  <ItemGroup Condition=" '$(TargetFramework.TrimEnd(`0123456789`))' == 'net' Or '$(TargetFrameworkVersion)' != '' ">
+    <!-- MSBuildThisFileDirectory is equal to <packageDir>/build/ -->
+    <Content Include="$(MSBuildThisFileDirectory)..\runtimes\$(_MongoSandboxRid)\native\mongodb\**\*">
+      <Link>runtimes\$(_MongoSandboxRid)\native\mongodb\%(RecursiveDir)\%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <Visible>false</Visible>
+    </Content>
+  </ItemGroup>
+</Project>

@@ -1,0 +1,37 @@
+<Project>
+  <PropertyGroup>
+    <Copyright>Copyright © Wassim K $([System.DateTime]::UtcNow.ToString(yyyy))</Copyright>
+    <Authors>Wassim K</Authors>
+    <Owners>Wassim K</Owners>
+    <PackageProjectUrl>https://github.com/wassim-k/MongoSandbox</PackageProjectUrl>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <LangVersion>latest</LangVersion>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <IncludeSymbols>false</IncludeSymbols>
+    <PackageTags>MongoDB;Mongo;test;testing;unittest;integrationtest</PackageTags>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.507">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+  
+  <!-- https://docs.microsoft.com/en-us/nuget/reference/errors-and-warnings/nu5128#solution-1 -->
+  <Target Name="AddTfmSpecificPackageContent">
+    <ItemGroup>
+      <TfmSpecificPackageFile Include="_._">
+         <Pack>true</Pack>
+         <PackagePath>lib\$(TargetFramework)</PackagePath>
+      </TfmSpecificPackageFile>
+    </ItemGroup>
+  </Target>
+</Project>
