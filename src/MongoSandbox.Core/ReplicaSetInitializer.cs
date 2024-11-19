@@ -6,27 +6,27 @@ using MongoDB.Driver.Core.Servers;
 
 namespace MongoSandbox;
 
-internal sealed class ReplicaSetInitializer
+internal sealed class ReplicaSetInitializer : IDisposable
 {
     private readonly MongoRunnerOptions _options;
-    private readonly TaskCompletionSource<bool> _replicaSetReadyTcs;
-    private readonly TaskCompletionSource<bool> _transactionReadyTcs;
+    private readonly ManualResetEventSlim _replicaSetReadyEvent;
+    private readonly ManualResetEventSlim _transactionReadyEvent;
 
     public ReplicaSetInitializer(MongoRunnerOptions options)
     {
         _options = options;
-        _replicaSetReadyTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        _transactionReadyTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _replicaSetReadyEvent = new ManualResetEventSlim(false);
+        _transactionReadyEvent = new ManualResetEventSlim(false);
     }
 
-    public async Task InitializeAsync()
+    public void Initialize()
     {
-        await InitializeReplicaSetConfigAsync();
-        await WaitForReplicaSetReadinessAsync();
-        await WaitForTransactionReadinessAsync();
+        InitializeReplicaSetConfig();
+        WaitForReplicaSetReadiness();
+        WaitForTransactionReadiness();
     }
 
-    private async Task InitializeReplicaSetConfigAsync()
+    private void InitializeReplicaSetConfig()
     {
         try
         {
@@ -39,7 +39,6 @@ internal sealed class ReplicaSetInitializer
             };
 
             using var client = new MongoClient(settings);
-
             var admin = client.GetDatabase("admin");
 
             var replConfig = new BsonDocument(new List<BsonElement>
@@ -53,51 +52,59 @@ internal sealed class ReplicaSetInitializer
 
             using var cts = new CancellationTokenSource(_options.ReplicaSetSetupTimeout);
             var command = new BsonDocument("replSetInitiate", replConfig);
-            await admin.RunCommandAsync<BsonDocument>(command, cancellationToken: cts.Token);
+            admin.RunCommand<BsonDocument>(command, cancellationToken: cts.Token);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex) when (ex is OperationCanceledException or TimeoutException)
+        {
+            // ignore
+        }
+        catch (Exception ex)
         {
             _options.StandardErrorLogger?.Invoke("An error occurred while initializing the replica set: " + ex);
             throw;
         }
     }
 
-    private async Task WaitForReplicaSetReadinessAsync()
+    private void WaitForReplicaSetReadiness()
     {
-        using var cts = new CancellationTokenSource(_options.ReplicaSetSetupTimeout);
-        using var registration = cts.Token.Register(() =>
-            _replicaSetReadyTcs.TrySetException(new TimeoutException(string.Format(
+        if (!_replicaSetReadyEvent.Wait(_options.ReplicaSetSetupTimeout))
+        {
+            throw new TimeoutException(string.Format(
                 CultureInfo.InvariantCulture,
                 "Replica set initialization took longer than the specified timeout of {0} seconds. Consider increasing the value of '{1}'.",
                 _options.ReplicaSetSetupTimeout.TotalSeconds,
-                nameof(_options.ReplicaSetSetupTimeout)))));
-
-        await _replicaSetReadyTcs.Task;
+                nameof(_options.ReplicaSetSetupTimeout)));
+        }
     }
 
-    private async Task WaitForTransactionReadinessAsync()
+    private void WaitForTransactionReadiness()
     {
-        using var cts = new CancellationTokenSource(_options.ReplicaSetSetupTimeout);
-        using var registration = cts.Token.Register(() =>
-            _transactionReadyTcs.TrySetException(new TimeoutException(string.Format(
+        if (!_transactionReadyEvent.Wait(_options.ReplicaSetSetupTimeout))
+        {
+            throw new TimeoutException(string.Format(
                 CultureInfo.InvariantCulture,
                 "Cluster readiness for transactions took longer than the specified timeout of {0} seconds. Consider increasing the value of '{1}'.",
                 _options.ReplicaSetSetupTimeout.TotalSeconds,
-                nameof(_options.ReplicaSetSetupTimeout)))));
-
-        await _transactionReadyTcs.Task;
+                nameof(_options.ReplicaSetSetupTimeout)));
+        }
     }
 
     private void OnClusterDescriptionChanged(ClusterDescriptionChangedEvent @event)
     {
         if (@event.NewDescription.Servers.Any(s => s.Type == ServerType.ReplicaSetPrimary && s.State == ServerState.Connected))
         {
-            _replicaSetReadyTcs.TrySetResult(true);
+            _replicaSetReadyEvent.Set();
         }
 
         if (@event.NewDescription.Servers.Any(server => server.State == ServerState.Connected && server.IsDataBearing))
         {
-            _transactionReadyTcs.TrySetResult(true);
+            _transactionReadyEvent.Set();
         }
+    }
+
+    public void Dispose()
+    {
+        _replicaSetReadyEvent.Dispose();
+        _transactionReadyEvent.Dispose();
     }
 }
