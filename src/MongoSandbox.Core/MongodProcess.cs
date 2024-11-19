@@ -73,8 +73,8 @@ internal sealed class MongodProcess : BaseMongoProcess
     {
         try
         {
-            var initializer = new ReplicaSetInitializer(Options);
-            initializer.InitializeAsync().GetAwaiter().GetResult();
+            using var initializer = new ReplicaSetInitializer(Options);
+            initializer.Initialize();
         }
         catch (Exception ex)
         {
