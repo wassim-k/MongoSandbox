@@ -36,12 +36,8 @@ internal sealed class MongoExecutableLocator : IMongoExecutableLocator
     {
         [OSPlatform.Windows] = "win-x64",
         [OSPlatform.Linux] = "linux-x64",
-        [OSPlatform.OSX] = "osx-x64",
+        [OSPlatform.OSX] = "osx-arm64",
     };
-
-    private static string GetMongoExecutableFileName(Dictionary<OSPlatform, string> mappings) =>
-        mappings.Where(x => RuntimeInformation.IsOSPlatform(x.Key)).Select(x => x.Value).FirstOrDefault()
-        ?? throw new NotSupportedException("Current operating system is not supported");
 
     public string FindMongoExecutablePath(MongoRunnerOptions options, MongoProcessKind processKind)
     {
@@ -85,6 +81,10 @@ internal sealed class MongoExecutableLocator : IMongoExecutableLocator
 
         throw new FileNotFoundException("Could not find " + executableFileName + " in the following paths: " + string.Join(", ", exploredPaths.Select(x => "'" + x + "'")), executableFileName, innerException);
     }
+
+    private static string GetMongoExecutableFileName(Dictionary<OSPlatform, string> mappings) =>
+        mappings.Where(x => RuntimeInformation.IsOSPlatform(x.Key)).Select(x => x.Value).FirstOrDefault()
+        ?? throw new NotSupportedException("Current operating system is not supported");
 
     // https://stackoverflow.com/questions/52797/how-do-i-get-the-path-of-the-assembly-the-code-is-in
     private static IEnumerable<FileInfo> GetPotentialMongoExecutablePaths(MongoRunnerOptions options, string mongoExecutableFileName)

@@ -1,16 +1,16 @@
 ﻿using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using Microsoft.Win32.SafeHandles;
 using Windows.Win32;
 using Windows.Win32.Security;
 using Windows.Win32.System.JobObjects;
-using Microsoft.Win32.SafeHandles;
 
 namespace MongoSandbox;
 
 internal static class NativeMethods
 {
-    private static readonly object _createJobObjectLock = new object();
+    private static readonly object CreateJobObjectLock = new object();
     private static SafeFileHandle? _jobObjectHandle;
 
     public static void EnsureMongoProcessesAreKilledWhenCurrentProcessIsKilled()
@@ -46,7 +46,7 @@ internal static class NativeMethods
             return;
         }
 
-        lock (_createJobObjectLock)
+        lock (CreateJobObjectLock)
         {
             if (_jobObjectHandle != null)
             {

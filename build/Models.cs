@@ -7,12 +7,12 @@ public sealed class ProjectInfo
 {
     public ProjectInfo(string name, string target, string architecture, string edition, int majorVersion, string rid)
     {
-        this.Name = name;
-        this.Target = target;
-        this.Architecture = architecture;
-        this.Edition = edition;
-        this.MajorVersion = majorVersion;
-        this.Rid = rid;
+        Name = name;
+        Target = target;
+        Architecture = architecture;
+        Edition = edition;
+        MajorVersion = majorVersion;
+        Rid = rid;
     }
 
     public string Name { get; }
@@ -27,11 +27,11 @@ public sealed class ProjectInfo
 
     public string Rid { get; }
 
-    public string MongoExecutableFileName => this.Target.Contains("windows", StringComparison.OrdinalIgnoreCase) ? "mongod.exe" : "mongod";
+    public string MongoExecutableFileName => Target.Contains("windows", StringComparison.OrdinalIgnoreCase) ? "mongod.exe" : "mongod";
 
-    public string MongoImportExecutableFileName => this.Target.Contains("windows", StringComparison.OrdinalIgnoreCase) ? "mongoimport.exe" : "mongoimport";
+    public string MongoImportExecutableFileName => Target.Contains("windows", StringComparison.OrdinalIgnoreCase) ? "mongoimport.exe" : "mongoimport";
 
-    public string MongoExportExecutableFileName => this.Target.Contains("windows", StringComparison.OrdinalIgnoreCase) ? "mongoexport.exe" : "mongoexport";
+    public string MongoExportExecutableFileName => Target.Contains("windows", StringComparison.OrdinalIgnoreCase) ? "mongoexport.exe" : "mongoexport";
 }
 
 public sealed class ToolsVersionsDto

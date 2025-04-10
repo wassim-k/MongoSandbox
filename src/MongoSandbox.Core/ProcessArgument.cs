@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 
 namespace MongoSandbox;
 
@@ -39,7 +39,7 @@ internal static class ProcessArgument
                 }
                 else if (path[i] == DoubleQuote)
                 {
-                    stringBuilder.Append(Backslash, backslashCount * 2 + 1).Append(DoubleQuote);
+                    stringBuilder.Append(Backslash, (backslashCount * 2) + 1).Append(DoubleQuote);
                     i++;
                 }
                 else

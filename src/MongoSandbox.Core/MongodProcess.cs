@@ -32,6 +32,12 @@ internal sealed class MongodProcess : BaseMongoProcess
         }
     }
 
+    public override void Dispose()
+    {
+        _connectionReadyEvent.Dispose();
+        base.Dispose();
+    }
+
     private void StartAndWaitForConnectionReadiness()
     {
         void OnOutputDataReceivedForConnectionReadiness(object sender, DataReceivedEventArgs args)
@@ -83,11 +89,5 @@ internal sealed class MongodProcess : BaseMongoProcess
             throw new MongoConfigurationException(
                 "Failed to initialize MongoDB replica set. Check the error logs for details.", ex);
         }
-    }
-
-    public override void Dispose()
-    {
-        _connectionReadyEvent.Dispose();
-        base.Dispose();
     }
 }

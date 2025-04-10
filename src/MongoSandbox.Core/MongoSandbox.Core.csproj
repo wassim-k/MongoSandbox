@@ -1,13 +1,16 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>net472;netstandard2.1</TargetFrameworks>
     <IsPackable>true</IsPackable>
     <Description>The core library of the .NET wrapper for MongoDB</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <IncludeSymbols>true</IncludeSymbols>
-    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <RootNamespace>MongoSandbox</RootNamespace>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- Documentation generation is required for the compiler to function properly: https://github.com/DotNetAnalyzers/StyleCopAnalyzers/issues/2514#issuecomment-320705428 -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- Disabled AD0001 because of an issue in .NET -->
+    <!-- https://github.com/dotnet/aspnetcore/issues/50836 -->
+    <NoWarn>$(NoWarn),1573,1591,1712,AD0001</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -16,7 +19,7 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.Windows.CsWin32" Version="0.3.106">
+    <PackageReference Include="Microsoft.Windows.CsWin32" Version="0.3.183">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
   </ItemGroup>

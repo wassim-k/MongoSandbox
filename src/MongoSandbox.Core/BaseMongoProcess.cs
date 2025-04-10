@@ -8,10 +8,7 @@ internal abstract class BaseMongoProcess : IMongoProcess
     {
         Options = options;
 
-        if (options.KillMongoProcessesWhenCurrentProcessExits)
-        {
-            NativeMethods.EnsureMongoProcessesAreKilledWhenCurrentProcessIsKilled();
-        }
+        NativeMethods.EnsureMongoProcessesAreKilledWhenCurrentProcessIsKilled();
 
         var processStartInfo = new ProcessStartInfo
         {
@@ -35,22 +32,6 @@ internal abstract class BaseMongoProcess : IMongoProcess
     protected MongoRunnerOptions Options { get; }
 
     protected Process Process { get; }
-
-    private void OnOutputDataReceivedForLogging(object sender, DataReceivedEventArgs args)
-    {
-        if (Options.StandardOuputLogger != null && args.Data != null)
-        {
-            Options.StandardOuputLogger(args.Data);
-        }
-    }
-
-    private void OnErrorDataReceivedForLogging(object sender, DataReceivedEventArgs args)
-    {
-        if (Options.StandardErrorLogger != null && args.Data != null)
-        {
-            Options.StandardErrorLogger(args.Data);
-        }
-    }
 
     public abstract void Start();
 
@@ -76,5 +57,21 @@ internal abstract class BaseMongoProcess : IMongoProcess
         }
 
         Process.Dispose();
+    }
+
+    private void OnOutputDataReceivedForLogging(object sender, DataReceivedEventArgs args)
+    {
+        if (Options.StandardOutputLogger != null && args.Data != null)
+        {
+            Options.StandardOutputLogger(args.Data);
+        }
+    }
+
+    private void OnErrorDataReceivedForLogging(object sender, DataReceivedEventArgs args)
+    {
+        if (Options.StandardErrorLogger != null && args.Data != null)
+        {
+            Options.StandardErrorLogger(args.Data);
+        }
     }
 }

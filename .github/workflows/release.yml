@@ -6,27 +6,57 @@ on:
       - "*.*.*"
 
 jobs:
-  build-test:
-    uses: ./.github/workflows/_build-test.yml
-
-  push:
+  pack:
     runs-on: ubuntu-latest
-    needs: [build-test]
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - uses: actions/setup-dotnet@v4
+
+      - run: ./build.ps1 --target=pack
+        shell: pwsh
+
+      - uses: actions/upload-artifact@v4
         with:
-          dotnet-version: 8.0.x
+          name: output-${{ github.run_number }}-${{ github.run_attempt }}
+          path: .output/
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+          include-hidden-files: true
+
+  test:
+    runs-on: ubuntu-latest
+    needs: [pack]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
 
       - uses: actions/download-artifact@v4
         with:
-          name: ${{ needs.build-test.outputs.artifact-name }}
+          name: output-${{ github.run_number }}-${{ github.run_attempt }}
           path: .output/
 
-      - run: ./build.ps1 --target=push --exclusive --nuget-api-key=${{ secrets.NUGET_API_KEY }} --nuget-source=${{ secrets.NUGET_SOURCE }}
+      - run: ./build.ps1 --target=test --exclusive
+        shell: pwsh
+
+  push:
+    runs-on: ubuntu-latest
+    needs: [test]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: output-${{ github.run_number }}-${{ github.run_attempt }}
+          path: .output/
+
+      - run: ./build.ps1 --target=push --exclusive --nuget-api-key=${{ secrets.nuget_api_key }} --nuget-source=${{ secrets.nuget_source }}
         shell: pwsh
 
   clean:
@@ -36,4 +66,4 @@ jobs:
     steps:
       - uses: geekyeggo/delete-artifact@v5
         with:
-          name: ${{ needs.build-test.outputs.artifact-name }}
+          name: output-${{ github.run_number }}-${{ github.run_attempt }}

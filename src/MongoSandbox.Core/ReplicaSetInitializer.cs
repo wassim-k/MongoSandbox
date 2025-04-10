@@ -26,6 +26,12 @@ internal sealed class ReplicaSetInitializer : IDisposable
         WaitForTransactionReadiness();
     }
 
+    public void Dispose()
+    {
+        _replicaSetReadyEvent.Dispose();
+        _transactionReadyEvent.Dispose();
+    }
+
     private void InitializeReplicaSetConfig()
     {
         try
@@ -100,11 +106,5 @@ internal sealed class ReplicaSetInitializer : IDisposable
         {
             _transactionReadyEvent.Set();
         }
-    }
-
-    public void Dispose()
-    {
-        _replicaSetReadyEvent.Dispose();
-        _transactionReadyEvent.Dispose();
     }
 }

@@ -17,37 +17,27 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MongoSandbox.Core.Tests", "
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MongoSandbox.Core", "MongoSandbox.Core\MongoSandbox.Core.csproj", "{E58299B0-E5C5-4358-ACA2-11AA859EAD81}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MongoSandbox5.runtime.win-x64", "MongoSandbox.Runtimes\MongoSandbox5.runtime.win-x64.csproj", "{1C2D8B41-77A2-46EB-A74B-D8B3BE91250E}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MongoSandbox5.runtime.linux-x64", "MongoSandbox.Runtimes\MongoSandbox5.runtime.linux-x64.csproj", "{31ECE2A4-65CA-49F7-BEF8-31E97AA0438C}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MongoSandbox5.runtime.osx-x64", "MongoSandbox.Runtimes\MongoSandbox5.runtime.osx-x64.csproj", "{2FE78276-0B9B-4B76-9648-73AF4F409160}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MongoSandbox6.runtime.osx-x64", "MongoSandbox.Runtimes\MongoSandbox6.runtime.osx-x64.csproj", "{CC4B9A52-C0D0-4652-B75F-62A5F1524E9B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MongoSandbox6.runtime.osx-arm64", "MongoSandbox.Runtimes\MongoSandbox6.runtime.osx-arm64.csproj", "{CC4B9A52-C0D0-4652-B75F-62A5F1524E9B}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MongoSandbox6.runtime.linux-x64", "MongoSandbox.Runtimes\MongoSandbox6.runtime.linux-x64.csproj", "{6D723CAC-6C36-432B-AF82-FED039080D40}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MongoSandbox6.runtime.win-x64", "MongoSandbox.Runtimes\MongoSandbox6.runtime.win-x64.csproj", "{1A20E788-4D1C-4E42-862A-FD3E49F7DA84}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MongoSandbox5", "MongoSandbox5\MongoSandbox5.csproj", "{4DCC8E0B-00F4-401D-B41D-93CDDD7F296E}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MongoSandbox6", "MongoSandbox6\MongoSandbox6.csproj", "{9BA549AC-C09B-4913-B5ED-981BE389F0BF}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MongoSandbox7", "MongoSandbox7\MongoSandbox7.csproj", "{D6CB0731-201C-4561-85F8-93DD0109CE43}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MongoSandbox7.runtime.linux-x64", "MongoSandbox.Runtimes\MongoSandbox7.runtime.linux-x64.csproj", "{14EB9AE5-8BED-4C4F-A8FA-B1CAA7CDDB31}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MongoSandbox7.runtime.osx-x64", "MongoSandbox.Runtimes\MongoSandbox7.runtime.osx-x64.csproj", "{0772619C-E004-474A-AC00-4974C545C825}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MongoSandbox7.runtime.osx-arm64", "MongoSandbox.Runtimes\MongoSandbox7.runtime.osx-arm64.csproj", "{0772619C-E004-474A-AC00-4974C545C825}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MongoSandbox7.runtime.win-x64", "MongoSandbox.Runtimes\MongoSandbox7.runtime.win-x64.csproj", "{CDDDD084-72FE-4BBB-9239-4B9D038C8F16}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MongoSandbox8.runtime.linux-x64", "MongoSandbox.Runtimes\MongoSandbox8.runtime.linux-x64.csproj", "{37499680-C81E-493F-9A39-53A795479016}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MongoSandbox8.runtime.osx-x64", "MongoSandbox.Runtimes\MongoSandbox8.runtime.osx-x64.csproj", "{D60320C0-142B-432B-9821-6E904BF8E996}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MongoSandbox8.runtime.osx-arm64", "MongoSandbox.Runtimes\MongoSandbox8.runtime.osx-arm64.csproj", "{D60320C0-142B-432B-9821-6E904BF8E996}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MongoSandbox8.runtime.win-x64", "MongoSandbox.Runtimes\MongoSandbox8.runtime.win-x64.csproj", "{A972B910-AD58-4ECE-BE8E-87119437C359}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MongoSandbox8", "MongoSandbox8\MongoSandbox8.csproj", "{FA5B50DC-EFFA-4A13-B3D1-3EC6EA2EFE51}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "build", "build", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Build", "..\build\Build.csproj", "{4F1A5CD8-F08F-6B1C-4564-8476E15A785B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -63,18 +53,6 @@ Global
 		{E58299B0-E5C5-4358-ACA2-11AA859EAD81}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E58299B0-E5C5-4358-ACA2-11AA859EAD81}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E58299B0-E5C5-4358-ACA2-11AA859EAD81}.Release|Any CPU.Build.0 = Release|Any CPU
-		{1C2D8B41-77A2-46EB-A74B-D8B3BE91250E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{1C2D8B41-77A2-46EB-A74B-D8B3BE91250E}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{1C2D8B41-77A2-46EB-A74B-D8B3BE91250E}.Release|Any CPU.ActiveCfg = Debug|Any CPU
-		{1C2D8B41-77A2-46EB-A74B-D8B3BE91250E}.Release|Any CPU.Build.0 = Debug|Any CPU
-		{31ECE2A4-65CA-49F7-BEF8-31E97AA0438C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{31ECE2A4-65CA-49F7-BEF8-31E97AA0438C}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{31ECE2A4-65CA-49F7-BEF8-31E97AA0438C}.Release|Any CPU.ActiveCfg = Debug|Any CPU
-		{31ECE2A4-65CA-49F7-BEF8-31E97AA0438C}.Release|Any CPU.Build.0 = Debug|Any CPU
-		{2FE78276-0B9B-4B76-9648-73AF4F409160}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{2FE78276-0B9B-4B76-9648-73AF4F409160}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{2FE78276-0B9B-4B76-9648-73AF4F409160}.Release|Any CPU.ActiveCfg = Debug|Any CPU
-		{2FE78276-0B9B-4B76-9648-73AF4F409160}.Release|Any CPU.Build.0 = Debug|Any CPU
 		{CC4B9A52-C0D0-4652-B75F-62A5F1524E9B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{CC4B9A52-C0D0-4652-B75F-62A5F1524E9B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CC4B9A52-C0D0-4652-B75F-62A5F1524E9B}.Release|Any CPU.ActiveCfg = Debug|Any CPU
@@ -87,18 +65,6 @@ Global
 		{1A20E788-4D1C-4E42-862A-FD3E49F7DA84}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1A20E788-4D1C-4E42-862A-FD3E49F7DA84}.Release|Any CPU.ActiveCfg = Debug|Any CPU
 		{1A20E788-4D1C-4E42-862A-FD3E49F7DA84}.Release|Any CPU.Build.0 = Debug|Any CPU
-		{4DCC8E0B-00F4-401D-B41D-93CDDD7F296E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{4DCC8E0B-00F4-401D-B41D-93CDDD7F296E}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{4DCC8E0B-00F4-401D-B41D-93CDDD7F296E}.Release|Any CPU.ActiveCfg = Debug|Any CPU
-		{4DCC8E0B-00F4-401D-B41D-93CDDD7F296E}.Release|Any CPU.Build.0 = Debug|Any CPU
-		{9BA549AC-C09B-4913-B5ED-981BE389F0BF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{9BA549AC-C09B-4913-B5ED-981BE389F0BF}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{9BA549AC-C09B-4913-B5ED-981BE389F0BF}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{9BA549AC-C09B-4913-B5ED-981BE389F0BF}.Release|Any CPU.Build.0 = Release|Any CPU
-		{D6CB0731-201C-4561-85F8-93DD0109CE43}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{D6CB0731-201C-4561-85F8-93DD0109CE43}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{D6CB0731-201C-4561-85F8-93DD0109CE43}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{D6CB0731-201C-4561-85F8-93DD0109CE43}.Release|Any CPU.Build.0 = Release|Any CPU
 		{14EB9AE5-8BED-4C4F-A8FA-B1CAA7CDDB31}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{14EB9AE5-8BED-4C4F-A8FA-B1CAA7CDDB31}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{14EB9AE5-8BED-4C4F-A8FA-B1CAA7CDDB31}.Release|Any CPU.ActiveCfg = Debug|Any CPU
@@ -123,18 +89,15 @@ Global
 		{A972B910-AD58-4ECE-BE8E-87119437C359}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A972B910-AD58-4ECE-BE8E-87119437C359}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A972B910-AD58-4ECE-BE8E-87119437C359}.Release|Any CPU.Build.0 = Release|Any CPU
-		{FA5B50DC-EFFA-4A13-B3D1-3EC6EA2EFE51}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{FA5B50DC-EFFA-4A13-B3D1-3EC6EA2EFE51}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{FA5B50DC-EFFA-4A13-B3D1-3EC6EA2EFE51}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{FA5B50DC-EFFA-4A13-B3D1-3EC6EA2EFE51}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4F1A5CD8-F08F-6B1C-4564-8476E15A785B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4F1A5CD8-F08F-6B1C-4564-8476E15A785B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4F1A5CD8-F08F-6B1C-4564-8476E15A785B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4F1A5CD8-F08F-6B1C-4564-8476E15A785B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{1C2D8B41-77A2-46EB-A74B-D8B3BE91250E} = {819E3828-0328-4F38-BDB3-5825B4913AAB}
-		{31ECE2A4-65CA-49F7-BEF8-31E97AA0438C} = {819E3828-0328-4F38-BDB3-5825B4913AAB}
-		{2FE78276-0B9B-4B76-9648-73AF4F409160} = {819E3828-0328-4F38-BDB3-5825B4913AAB}
 		{CC4B9A52-C0D0-4652-B75F-62A5F1524E9B} = {819E3828-0328-4F38-BDB3-5825B4913AAB}
 		{6D723CAC-6C36-432B-AF82-FED039080D40} = {819E3828-0328-4F38-BDB3-5825B4913AAB}
 		{1A20E788-4D1C-4E42-862A-FD3E49F7DA84} = {819E3828-0328-4F38-BDB3-5825B4913AAB}
@@ -144,6 +107,7 @@ Global
 		{37499680-C81E-493F-9A39-53A795479016} = {819E3828-0328-4F38-BDB3-5825B4913AAB}
 		{D60320C0-142B-432B-9821-6E904BF8E996} = {819E3828-0328-4F38-BDB3-5825B4913AAB}
 		{A972B910-AD58-4ECE-BE8E-87119437C359} = {819E3828-0328-4F38-BDB3-5825B4913AAB}
+		{4F1A5CD8-F08F-6B1C-4564-8476E15A785B} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {987B7489-CEC2-467B-8D2D-BECDD36AC8AA}

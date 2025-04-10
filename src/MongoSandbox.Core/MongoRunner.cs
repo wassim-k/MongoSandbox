@@ -9,28 +9,32 @@ namespace MongoSandbox;
 
 public sealed class MongoRunner
 {
+    private static readonly string DefaultRootDataDirectory = Path.Combine(Path.GetTempPath(), "mongo-sandbox");
+    private static int ongoingRootDataDirectoryCleanupCount;
+
     private readonly IFileSystem _fileSystem;
+    private readonly ITimeProvider _timeProvider;
     private readonly IPortFactory _portFactory;
     private readonly IMongoExecutableLocator _executableLocator;
     private readonly IMongoProcessFactory _processFactory;
     private readonly MongoRunnerOptions _options;
 
-    private IMongoProcess? _process;
-    private string? _dataDirectory;
+    private IMongoProcess? process;
+    private string? dataDirectory;
 
-    private MongoRunner(IFileSystem fileSystem, IPortFactory portFactory, IMongoExecutableLocator executableLocator, IMongoProcessFactory processFactory, MongoRunnerOptions options)
+    private MongoRunner(IFileSystem fileSystem, ITimeProvider timeProvider, IPortFactory portFactory, IMongoExecutableLocator executableLocator, IMongoProcessFactory processFactory, MongoRunnerOptions? options = null)
     {
         _fileSystem = fileSystem;
+        _timeProvider = timeProvider;
         _portFactory = portFactory;
         _executableLocator = executableLocator;
         _processFactory = processFactory;
-        _options = options;
+        _options = options == null ? new MongoRunnerOptions() : new MongoRunnerOptions(options);
     }
 
     public static IMongoRunner Run(MongoRunnerOptions? options = null)
     {
-        var optionsCopy = options == null ? new MongoRunnerOptions() : new MongoRunnerOptions(options);
-        var runner = new MongoRunner(new FileSystem(), new PortFactory(), new MongoExecutableLocator(), new MongoProcessFactory(), optionsCopy);
+        var runner = new MongoRunner(new FileSystem(), new TimeProvider(), new PortFactory(), new MongoExecutableLocator(), new MongoProcessFactory(), options);
         return runner.RunInternal();
     }
 
@@ -43,14 +47,23 @@ public sealed class MongoRunner
             _fileSystem.MakeFileExecutable(executablePath);
 
             // Ensure data directory exists...
-            _dataDirectory = _options.DataDirectory ?? Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
-            _fileSystem.CreateDirectory(_dataDirectory);
+            if (_options.DataDirectory != null)
+            {
+                dataDirectory = _options.DataDirectory;
+            }
+            else
+            {
+                _options.RootDataDirectoryPath ??= DefaultRootDataDirectory;
+                dataDirectory = Path.Combine(_options.RootDataDirectoryPath, Path.GetRandomFileName());
+            }
+
+            _fileSystem.CreateDirectory(dataDirectory);
 
             try
             {
                 // ...and has no existing MongoDB lock file
                 // https://stackoverflow.com/a/6857973/825695
-                var lockFilePath = Path.Combine(_dataDirectory, "mongod.lock");
+                var lockFilePath = Path.Combine(dataDirectory, "mongod.lock");
                 _fileSystem.DeleteFile(lockFilePath);
             }
             catch
@@ -58,16 +71,18 @@ public sealed class MongoRunner
                 // Ignored - this data directory might already be in use, we'll see later how mongod reacts
             }
 
+            CleanupOldDataDirectories();
+
             _options.MongoPort ??= _portFactory.GetRandomAvailablePort();
 
             // Build MongoDB executable arguments
-            var arguments = string.Format(CultureInfo.InvariantCulture, "--dbpath {0} --port {1} --bind_ip 127.0.0.1", ProcessArgument.Escape(_dataDirectory), _options.MongoPort);
+            var arguments = string.Format(CultureInfo.InvariantCulture, "--dbpath {0} --port {1} --bind_ip 127.0.0.1", ProcessArgument.Escape(dataDirectory), _options.MongoPort);
             arguments += RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? string.Empty : " --tlsMode disabled";
             arguments += _options.UseSingleNodeReplicaSet ? " --replSet " + _options.ReplicaSetName : string.Empty;
             arguments += string.IsNullOrWhiteSpace(_options.AdditionalArguments) ? string.Empty : " " + _options.AdditionalArguments;
 
-            _process = _processFactory.CreateMongoProcess(_options, MongoProcessKind.Mongod, executablePath, arguments);
-            _process.Start();
+            process = _processFactory.CreateMongoProcess(_options, MongoProcessKind.Mongod, executablePath, arguments);
+            process.Start();
 
             var connectionStringFormat = _options.UseSingleNodeReplicaSet ? "mongodb://127.0.0.1:{0}/?directConnection=true&replicaSet={1}&readPreference=primary" : "mongodb://127.0.0.1:{0}";
             var connectionString = string.Format(CultureInfo.InvariantCulture, connectionStringFormat, _options.MongoPort, _options.ReplicaSetName);
@@ -81,13 +96,62 @@ public sealed class MongoRunner
         }
     }
 
+    private void CleanupOldDataDirectories()
+    {
+        if (_options.DataDirectory != null)
+        {
+            // Data directory was set by user, do not trigger cleanup
+            return;
+        }
+
+        try
+        {
+            var isCleanupOngoing = Interlocked.Increment(ref ongoingRootDataDirectoryCleanupCount) > 1;
+            if (isCleanupOngoing)
+            {
+                return;
+            }
+
+            string[] dataDirectoryPaths;
+            try
+            {
+                dataDirectoryPaths = _fileSystem.GetDirectories(_options.RootDataDirectoryPath!, "*", SearchOption.TopDirectoryOnly);
+            }
+            catch (Exception ex)
+            {
+                _options.StandardErrorLogger?.Invoke($"An error occurred while trying to enumerate existing data directories for cleanup in '{DefaultRootDataDirectory}': {ex.Message}");
+                return;
+            }
+
+            foreach (var dataDirectoryPath in dataDirectoryPaths)
+            {
+                try
+                {
+                    var dataDirectoryAge = _timeProvider.UtcNow - _fileSystem.GetDirectoryCreationTimeUtc(dataDirectoryPath);
+                    if (dataDirectoryAge >= _options.DataDirectoryLifetime)
+                    {
+                        _fileSystem.DeleteDirectory(dataDirectoryPath);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _options.StandardErrorLogger?.Invoke($"An error occurred while trying to delete old data directory '{dataDirectoryPath}': {ex.Message}");
+                }
+            }
+        }
+        finally
+        {
+            Interlocked.Decrement(ref ongoingRootDataDirectoryCleanupCount);
+        }
+    }
+
     private void Dispose(bool throwOnException)
     {
         var exceptions = new List<Exception>(1);
 
         try
         {
-            _process?.Dispose();
+            process?.Dispose();
         }
         catch (Exception ex)
         {
@@ -96,10 +160,10 @@ public sealed class MongoRunner
 
         try
         {
-            // Do not dispose data directory if it was a user input
-            if (_dataDirectory != null && _options.DataDirectory == null)
+            // Do not dispose data directory if set from user input or the root data directory path was set for tests
+            if (dataDirectory != null && _options.DataDirectory == null && _options.RootDataDirectoryPath == DefaultRootDataDirectory)
             {
-                _fileSystem.DeleteDirectory(_dataDirectory);
+                _fileSystem.DeleteDirectory(dataDirectory);
             }
         }
         catch (Exception ex)
@@ -122,12 +186,12 @@ public sealed class MongoRunner
 
     private sealed class StartedMongoRunner : IMongoRunner
     {
-        private readonly MongoRunner _runner;
-        private int _isDisposed;
+        private readonly MongoRunner runner;
+        private int isDisposed;
 
         public StartedMongoRunner(MongoRunner runner, string connectionString)
         {
-            _runner = runner;
+            this.runner = runner;
             ConnectionString = connectionString;
         }
 
@@ -136,7 +200,7 @@ public sealed class MongoRunner
         [SuppressMessage("StyleCop.CSharp.ReadabilityRules", "SA1117:Parameters should be on same line or separate lines", Justification = "Would have used too many lines, and this way string.Format is still very readable")]
         public void Import(string database, string collection, string inputFilePath, string? additionalArguments = null, bool drop = false)
         {
-            if (Interlocked.CompareExchange(ref _isDisposed, 0, 0) == 1)
+            if (Interlocked.CompareExchange(ref isDisposed, 0, 0) == 1)
             {
                 throw new ObjectDisposedException("MongoDB runner is already disposed");
             }
@@ -156,22 +220,22 @@ public sealed class MongoRunner
                 throw new ArgumentException("Input file path is required", nameof(inputFilePath));
             }
 
-            var executablePath = _runner._executableLocator.FindMongoExecutablePath(_runner._options, MongoProcessKind.MongoImport);
-            _runner._fileSystem.MakeFileExecutable(executablePath);
+            var executablePath = runner._executableLocator.FindMongoExecutablePath(runner._options, MongoProcessKind.MongoImport);
+            runner._fileSystem.MakeFileExecutable(executablePath);
 
             var arguments = string.Format(
                 CultureInfo.InvariantCulture,
                 @"--uri=""{0}"" --db={1} --collection={2} --file={3} {4} {5}",
                 ConnectionString, database, collection, ProcessArgument.Escape(inputFilePath), drop ? " --drop" : string.Empty, additionalArguments ?? string.Empty);
 
-            using var process = _runner._processFactory.CreateMongoProcess(_runner._options, MongoProcessKind.MongoImport, executablePath, arguments);
+            using var process = runner._processFactory.CreateMongoProcess(runner._options, MongoProcessKind.MongoImport, executablePath, arguments);
             process.Start();
         }
 
         [SuppressMessage("StyleCop.CSharp.ReadabilityRules", "SA1117:Parameters should be on same line or separate lines", Justification = "Would have used too many lines, and this way string.Format is still very readable")]
         public void Export(string database, string collection, string outputFilePath, string? additionalArguments = null)
         {
-            if (Interlocked.CompareExchange(ref _isDisposed, 0, 0) == 1)
+            if (Interlocked.CompareExchange(ref isDisposed, 0, 0) == 1)
             {
                 throw new ObjectDisposedException("MongoDB runner is already disposed");
             }
@@ -191,24 +255,24 @@ public sealed class MongoRunner
                 throw new ArgumentException("Output file path is required", nameof(outputFilePath));
             }
 
-            var executablePath = _runner._executableLocator.FindMongoExecutablePath(_runner._options, MongoProcessKind.MongoExport);
-            _runner._fileSystem.MakeFileExecutable(executablePath);
+            var executablePath = runner._executableLocator.FindMongoExecutablePath(runner._options, MongoProcessKind.MongoExport);
+            runner._fileSystem.MakeFileExecutable(executablePath);
 
             var arguments = string.Format(
                 CultureInfo.InvariantCulture,
                 @"--uri=""{0}"" --db={1} --collection={2} --out={3} {4}",
                 ConnectionString, database, collection, ProcessArgument.Escape(outputFilePath), additionalArguments ?? string.Empty);
 
-            using var process = _runner._processFactory.CreateMongoProcess(_runner._options, MongoProcessKind.MongoExport, executablePath, arguments);
+            using var process = runner._processFactory.CreateMongoProcess(runner._options, MongoProcessKind.MongoExport, executablePath, arguments);
             process.Start();
         }
 
         public void Dispose()
         {
-            if (Interlocked.CompareExchange(ref _isDisposed, 1, 0) == 0)
+            if (Interlocked.CompareExchange(ref isDisposed, 1, 0) == 0)
             {
                 TryShutdownQuietly();
-                _runner.Dispose(throwOnException: true);
+                runner.Dispose(throwOnException: true);
             }
         }
 
@@ -234,7 +298,7 @@ public sealed class MongoRunner
             }
             catch (MongoConnectionException)
             {
-                // FYI this is the expected behavior as mongod is shutting down
+                // This is the expected behavior as mongod is shutting down
             }
             catch
             {

@@ -1,6 +1,5 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using GSoft.Extensions.Xunit;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using Xunit;
@@ -8,23 +7,24 @@ using Xunit.Abstractions;
 
 namespace MongoSandbox.Core.Tests;
 
-public class MongoRunnerTests : BaseIntegrationTest
+public class MongoRunnerTests
 {
-    public MongoRunnerTests(EmptyIntegrationFixture fixture, ITestOutputHelper testOutputHelper)
-        : base(fixture, testOutputHelper)
+    private readonly ITestOutputHelper _testOutputHelper;
+
+    public MongoRunnerTests(ITestOutputHelper testOutputHelper)
     {
+        _testOutputHelper = testOutputHelper;
     }
 
     [Fact]
-    public void Run_Fails_When_BinaryDirectory_Does_Not_Exist()
+    public void RunFailsWhenBinaryDirectoryDoesNotExist()
     {
         var options = new MongoRunnerOptions
         {
-            StandardOuputLogger = MongoMessageLogger,
+            StandardOutputLogger = MongoMessageLogger,
             StandardErrorLogger = MongoMessageLogger,
             BinaryDirectory = Guid.NewGuid().ToString(),
             AdditionalArguments = "--quiet",
-            KillMongoProcessesWhenCurrentProcessExits = true,
         };
 
         IMongoRunner? runner = null;
@@ -32,8 +32,8 @@ public class MongoRunnerTests : BaseIntegrationTest
         try
         {
             var ex = Assert.Throws<FileNotFoundException>(() => runner = MongoRunner.Run(options));
-            Assert.Contains(options.BinaryDirectory, ex.ToString());
-            Assert.DoesNotContain("runtimes", ex.ToString());
+            Assert.Contains(options.BinaryDirectory, ex.ToString(), StringComparison.Ordinal);
+            Assert.DoesNotContain("runtimes", ex.ToString(), StringComparison.Ordinal);
         }
         finally
         {
@@ -41,10 +41,66 @@ public class MongoRunnerTests : BaseIntegrationTest
         }
     }
 
+    [Fact]
+    public async Task RunCleansUpTemporaryDataDirectory()
+    {
+        var rootDataDirectoryPath = Path.Combine(Path.GetTempPath(), "mongo-sandbox-data-cleanup-tests");
+
+        try
+        {
+            // Start with a clean slate
+            Directory.Delete(rootDataDirectoryPath, recursive: true);
+        }
+        catch (DirectoryNotFoundException)
+        {
+        }
+
+        var options = new MongoRunnerOptions
+        {
+            StandardOutputLogger = MongoMessageLogger,
+            StandardErrorLogger = MongoMessageLogger,
+            RootDataDirectoryPath = rootDataDirectoryPath,
+            AdditionalArguments = "--quiet",
+        };
+
+        _testOutputHelper.WriteLine($"Root data directory path: {options.RootDataDirectoryPath}");
+        Assert.False(Directory.Exists(options.RootDataDirectoryPath), "The root data directory should not exist yet.");
+
+        // Creating a first data directory
+        using (MongoRunner.Run(options))
+        {
+        }
+
+        // Creating another data directory
+        using (MongoRunner.Run(options))
+        {
+        }
+
+        // Assert there's now two data directories
+        var dataDirectories = new HashSet<string>(Directory.EnumerateDirectories(options.RootDataDirectoryPath), StringComparer.Ordinal);
+        _testOutputHelper.WriteLine($"Data directories: {string.Join(", ", dataDirectories)}");
+        Assert.Equal(2, dataDirectories.Count);
+
+        // Shorten the lifetime of the data directories and wait for a longer time
+        options.DataDirectoryLifetime = TimeSpan.FromSeconds(1);
+        await Task.Delay(TimeSpan.FromSeconds(2));
+
+        // This should delete the old data directories and create a new one
+        using (MongoRunner.Run(options))
+        {
+        }
+
+        var dataDirectoriesAfterCleanup = new HashSet<string>(Directory.EnumerateDirectories(options.RootDataDirectoryPath), StringComparer.Ordinal);
+        _testOutputHelper.WriteLine($"Data directories after cleanup: {string.Join(", ", dataDirectoriesAfterCleanup)}");
+
+        var thirdDataDirectory = Assert.Single(dataDirectoriesAfterCleanup);
+        Assert.DoesNotContain(thirdDataDirectory, dataDirectories);
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void Import_Export_Works(bool useSingleNodeReplicaSet)
+    public void ImportExportWorks(bool useSingleNodeReplicaSet)
     {
         const string databaseName = "default";
         const string collectionName = "people";
@@ -52,21 +108,20 @@ public class MongoRunnerTests : BaseIntegrationTest
         var options = new MongoRunnerOptions
         {
             UseSingleNodeReplicaSet = useSingleNodeReplicaSet,
-            StandardOuputLogger = MongoMessageLogger,
+            StandardOutputLogger = MongoMessageLogger,
             StandardErrorLogger = MongoMessageLogger,
             AdditionalArguments = "--quiet",
-            KillMongoProcessesWhenCurrentProcessExits = true,
         };
 
         using (var runner = MongoRunner.Run(options))
         {
             if (useSingleNodeReplicaSet)
             {
-                Assert.Contains("replicaSet", runner.ConnectionString);
+                Assert.Contains("replicaSet", runner.ConnectionString, StringComparison.Ordinal);
             }
             else
             {
-                Assert.DoesNotContain("replicaSet", runner.ConnectionString);
+                Assert.DoesNotContain("replicaSet", runner.ConnectionString, StringComparison.Ordinal);
             }
         }
 
@@ -140,7 +195,7 @@ public class MongoRunnerTests : BaseIntegrationTest
                 };
 
                 const int longestComponentNameLength = 8;
-                Logger.Log(logLevel, "{Component} {Message}", trace.Component.PadRight(longestComponentNameLength), trace.Message);
+                _testOutputHelper.WriteLine($"{trace.Component,-longestComponentNameLength} {trace.Message}");
                 return;
             }
         }
@@ -148,7 +203,7 @@ public class MongoRunnerTests : BaseIntegrationTest
         {
         }
 
-        Logger.LogInformation("{Message}", message);
+        _testOutputHelper.WriteLine(message);
     }
 
     private sealed class MongoTrace
@@ -163,30 +218,11 @@ public class MongoRunnerTests : BaseIntegrationTest
         public string Message { get; set; } = string.Empty;
     }
 
-    private sealed class Person
+    private sealed record Person(string Id, string Name)
     {
         public Person()
+            : this(string.Empty, string.Empty)
         {
-        }
-
-        public Person(string id, string name)
-        {
-            Id = id;
-            Name = name;
-        }
-
-        public string Id { get; set; } = string.Empty;
-
-        public string Name { get; set; } = string.Empty;
-
-        private bool Equals(Person other)
-        {
-            return Id == other.Id && Name == other.Name;
-        }
-
-        public override bool Equals(object? obj)
-        {
-            return ReferenceEquals(this, obj) || (obj is Person other && Equals(other));
         }
     }
 }

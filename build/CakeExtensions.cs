@@ -52,7 +52,7 @@ public sealed class DotNetAddReferenceRunner : DotNetTool<IgnoredDotNetSettings>
         builder.Append("reference");
         builder.AppendQuoted(referencedProject.FullPath);
 
-        this.RunCommand(settings, builder);
+        RunCommand(settings, builder);
     }
 }
 
@@ -72,7 +72,7 @@ public sealed class DotNetRemoveReferenceRunner : DotNetTool<IgnoredDotNetSettin
         builder.Append("reference");
         builder.AppendQuoted(referencedProject.FullPath);
 
-        this.RunCommand(settings, builder);
+        RunCommand(settings, builder);
     }
 }
 
@@ -111,7 +111,7 @@ public sealed class DotNetAddPackageRunner : DotNetTool<IgnoredDotNetSettings>
             }
         }
 
-        this.RunCommand(settings, builder);
+        RunCommand(settings, builder);
     }
 }
 
@@ -131,6 +131,6 @@ public sealed class DotNetRemovePackageRunner : DotNetTool<IgnoredDotNetSettings
         builder.Append("package");
         builder.Append(packageName);
 
-        this.RunCommand(settings, builder);
+        RunCommand(settings, builder);
     }
 }

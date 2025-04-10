@@ -1,13 +1,9 @@
-<Project ToolsVersion="Current">
+<Project>
   <PropertyGroup>
-    <MongoVersion>5</MongoVersion>
+    <MongoVersion>8</MongoVersion>
     <FullMongoVersion>PLACEHOLDER</FullMongoVersion>
     <FullMongoVersion Condition=" '$(FullMongoVersion)' == 'PLACEHOLDER' ">$(MongoVersion)</FullMongoVersion>
-    <FileUpgradeFlags>
-    </FileUpgradeFlags>
-    <UpgradeBackupLocation>
-    </UpgradeBackupLocation>
-    <OldToolsVersion>2.0</OldToolsVersion>
   </PropertyGroup>
+
   <Import Project="MongoSandbox.runtime.targets" />
 </Project>

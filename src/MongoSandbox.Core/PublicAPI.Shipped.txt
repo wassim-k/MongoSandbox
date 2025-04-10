@@ -20,12 +20,12 @@ MongoSandbox.MongoRunnerOptions.ReplicaSetSetupTimeout.get -> System.TimeSpan
 MongoSandbox.MongoRunnerOptions.ReplicaSetSetupTimeout.set -> void
 MongoSandbox.MongoRunnerOptions.StandardErrorLogger.get -> MongoSandbox.Logger?
 MongoSandbox.MongoRunnerOptions.StandardErrorLogger.set -> void
-MongoSandbox.MongoRunnerOptions.StandardOuputLogger.get -> MongoSandbox.Logger?
-MongoSandbox.MongoRunnerOptions.StandardOuputLogger.set -> void
+MongoSandbox.MongoRunnerOptions.StandardOutputLogger.get -> MongoSandbox.Logger?
+MongoSandbox.MongoRunnerOptions.StandardOutputLogger.set -> void
 MongoSandbox.MongoRunnerOptions.UseSingleNodeReplicaSet.get -> bool
 MongoSandbox.MongoRunnerOptions.UseSingleNodeReplicaSet.set -> void
 MongoSandbox.MongoRunnerOptions.MongoPort.get -> int?
 MongoSandbox.MongoRunnerOptions.MongoPort.set -> void
-MongoSandbox.MongoRunnerOptions.KillMongoProcessesWhenCurrentProcessExits.get -> bool
-MongoSandbox.MongoRunnerOptions.KillMongoProcessesWhenCurrentProcessExits.set -> void
+MongoSandbox.MongoRunnerOptions.DataDirectoryLifetime.get -> System.TimeSpan?
+MongoSandbox.MongoRunnerOptions.DataDirectoryLifetime.set -> void
 static MongoSandbox.MongoRunner.Run(MongoSandbox.MongoRunnerOptions? options = null) -> MongoSandbox.IMongoRunner!

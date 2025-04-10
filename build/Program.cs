@@ -5,14 +5,16 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Json;
 using System.Security.Cryptography;
-using System.Text.Json;
 using System.Threading.Tasks;
 using Build;
 using Cake.Common;
 using Cake.Common.IO;
-using Cake.Common.Net;
 using Cake.Common.Tools.DotNet;
 using Cake.Common.Tools.DotNet.Build;
 using Cake.Common.Tools.DotNet.MSBuild;
@@ -22,16 +24,16 @@ using Cake.Common.Tools.DotNet.Pack;
 using Cake.Common.Tools.DotNet.Restore;
 using Cake.Common.Tools.DotNet.Test;
 using Cake.Common.Tools.GitVersion;
-using Cake.Compression;
 using Cake.Core;
 using Cake.Core.Diagnostics;
 using Cake.Core.IO;
 using Cake.Frosting;
-using Path = System.IO.Path;
+using CliWrap;
 using File = System.IO.File;
+using Path = System.IO.Path;
 
 return new CakeHost()
-    .InstallTool(new Uri("dotnet:?package=GitVersion.Tool&version=5.10.1"))
+    .InstallTool(new Uri("dotnet:?package=GitVersion.Tool&version=6.1.0"))
     .UseContext<BuildContext>()
     .Run(args);
 
@@ -39,8 +41,8 @@ public static class Constants
 {
     public const string Release = "Release";
 
-    public static readonly string SourceDirectoryPath = Path.Combine("..", "src");
-    public static readonly string OutputDirectoryPath = Path.Combine("..", ".output");
+    public static readonly string SourceDirectoryPath = Path.GetFullPath(Path.Combine("..", "src"));
+    public static readonly string OutputDirectoryPath = Path.GetFullPath(Path.Combine("..", ".output"));
     public static readonly string PackageVersionPath = Path.Combine(OutputDirectoryPath, "package-version.txt");
     public static readonly string SolutionPath = Path.Combine(SourceDirectoryPath, "MongoSandbox.sln");
     public static readonly string RuntimesPath = Path.Combine(SourceDirectoryPath, "MongoSandbox.Runtimes", "runtimes");
@@ -52,8 +54,8 @@ public class BuildContext : FrostingContext
 {
     public BuildContext(ICakeContext context) : base(context)
     {
-        this.NugetApiKey = context.Argument("nuget-api-key", string.Empty);
-        this.NugetSource = context.Argument("nuget-source", string.Empty);
+        NugetApiKey = context.Argument("nuget-api-key", string.Empty);
+        NugetSource = context.Argument("nuget-source", string.Empty);
     }
 
     public DotNetMSBuildSettings MSBuildSettings { get; } = new DotNetMSBuildSettings();
@@ -66,12 +68,12 @@ public class BuildContext : FrostingContext
     {
         if (log)
         {
-            this.Log.Information(name + ": " + value);
+            Log.Information(name + ": " + value);
         }
 
         if (!string.IsNullOrWhiteSpace(value))
         {
-            this.MSBuildSettings.Properties[name] = new[] { value };
+            MSBuildSettings.Properties[name] = [value];
         }
     }
 }
@@ -101,17 +103,15 @@ public sealed class GitVersionTask : FrostingTask<BuildContext>
     {
         var gitVersion = context.GitVersion();
 
-        context.AddMSBuildSetting("Version", gitVersion.NuGetVersion, log: true);
-        context.AddMSBuildSetting("VersionPrefix", gitVersion.MajorMinorPatch, log: true);
-        context.AddMSBuildSetting("VersionSuffix", gitVersion.PreReleaseTag, log: true);
-        context.AddMSBuildSetting("PackageVersion", gitVersion.FullSemVer, log: true);
+        context.AddMSBuildSetting("Version", gitVersion.SemVer, log: true);
+        context.AddMSBuildSetting("PackageVersion", gitVersion.SemVer, log: true);
         context.AddMSBuildSetting("InformationalVersion", gitVersion.InformationalVersion, log: true);
         context.AddMSBuildSetting("AssemblyVersion", gitVersion.AssemblySemVer, log: true);
         context.AddMSBuildSetting("FileVersion", gitVersion.AssemblySemFileVer, log: true);
         context.AddMSBuildSetting("RepositoryBranch", gitVersion.BranchName, log: true);
         context.AddMSBuildSetting("RepositoryCommit", gitVersion.Sha, log: true);
 
-        File.WriteAllText(Constants.PackageVersionPath, gitVersion.FullSemVer);
+        File.WriteAllText(Constants.PackageVersionPath, gitVersion.SemVer);
     }
 }
 
@@ -119,59 +119,63 @@ public sealed class GitVersionTask : FrostingTask<BuildContext>
 [IsDependentOn(typeof(GitVersionTask))]
 public sealed class DownloadMongoTask : AsyncFrostingTask<BuildContext>
 {
-    private static readonly ProjectInfo[] Projects =
-    {
+    internal static readonly ProjectInfo[] Projects =
+    [
         // MongoDB 8.x
         new ProjectInfo("MongoSandbox8.runtime.win-x64", "windows", "x86_64", "base", 8, "win-x64"),
-        new ProjectInfo("MongoSandbox8.runtime.osx-x64", "macos", "x86_64", "base", 8, "osx-x64"),
+        new ProjectInfo("MongoSandbox8.runtime.osx-arm64", "macos", "arm64", "base", 8, "osx-arm64"),
         new ProjectInfo("MongoSandbox8.runtime.linux-x64", "ubuntu2204", "x86_64", "targeted", 8, "linux-x64"),
 
         // MongoDB 7.x
         new ProjectInfo("MongoSandbox7.runtime.win-x64", "windows", "x86_64", "base", 7, "win-x64"),
-        new ProjectInfo("MongoSandbox7.runtime.osx-x64", "macos", "x86_64", "base", 7, "osx-x64"),
+        new ProjectInfo("MongoSandbox7.runtime.osx-arm64", "macos", "arm64", "base", 7, "osx-arm64"),
         new ProjectInfo("MongoSandbox7.runtime.linux-x64", "ubuntu2204", "x86_64", "targeted", 7, "linux-x64"),
 
         // MongoDB 6.x
         new ProjectInfo("MongoSandbox6.runtime.win-x64", "windows", "x86_64", "base", 6, "win-x64"),
-        new ProjectInfo("MongoSandbox6.runtime.osx-x64", "macos", "x86_64", "base", 6, "osx-x64"),
-        new ProjectInfo("MongoSandbox6.runtime.linux-x64", "ubuntu1804", "x86_64", "targeted", 6, "linux-x64"),
+        new ProjectInfo("MongoSandbox6.runtime.osx-arm64", "macos", "arm64", "base", 6, "osx-arm64"),
+        new ProjectInfo("MongoSandbox6.runtime.linux-x64", "ubuntu2204", "x86_64", "targeted", 6, "linux-x64"),
+    ];
 
-        // MongoDB 5.x
-        new ProjectInfo("MongoSandbox5.runtime.win-x64", "windows", "x86_64", "base", 5, "win-x64"),
-        new ProjectInfo("MongoSandbox5.runtime.osx-x64", "macos", "x86_64", "base", 5, "osx-x64"),
-        new ProjectInfo("MongoSandbox5.runtime.linux-x64", "ubuntu1804", "x86_64", "targeted", 5, "linux-x64"),
-    };
+    private static readonly HttpClient HttpClient = new HttpClient(new SocketsHttpHandler
+    {
+        PooledConnectionLifetime = TimeSpan.FromMinutes(2),
+        AutomaticDecompression = DecompressionMethods.All,
+    });
 
     public override async Task RunAsync(BuildContext context)
     {
-        var tasks = new List<Task>();
+        var mongoVersionsTask = GetMongoVersionsAsync(context);
+        var toolsVersionsTask = GetToolsVersionsAsync(context);
+
+        var mongoVersions = await mongoVersionsTask;
+        var toolsVersions = await toolsVersionsTask;
+
+        List<Task> tasks = [];
 
         foreach (var project in Projects)
         {
-            tasks.Add(Task.Factory.StartNew(() => RunProject(context, project), TaskCreationOptions.LongRunning).Unwrap());
+            tasks.Add(Task.Factory.StartNew(() => RunProjectAsync(context, project, mongoVersions, toolsVersions), TaskCreationOptions.LongRunning).Unwrap());
         }
 
         await Task.WhenAll(tasks);
     }
 
-    private static async Task RunProject(BuildContext context, ProjectInfo project)
+    private static async Task RunProjectAsync(BuildContext context, ProjectInfo project, MongoVersionsDto mongoVersions, ToolsVersionsDto toolsVersions)
     {
-        var mongoVersions = GetMongoVersions(context);
-        var toolsVersions = GetToolsVersions(context);
-
         // Find MongoDB for the current project
-        var mongoVersion = mongoVersions.Versions.FirstOrDefault(x => x.ProductionRelease && x.Version.StartsWith(project.MajorVersion.ToString(CultureInfo.InvariantCulture)))
-            ?? throw new InvalidOperationException("Could not find production release for MongoDB " + project.MajorVersion);
+        var mongoVersion = mongoVersions.Versions.FirstOrDefault(x => x.ProductionRelease && x.Version.StartsWith(project.MajorVersion.ToString(CultureInfo.InvariantCulture), StringComparison.OrdinalIgnoreCase))
+            ?? throw new InvalidOperationException($"Could not find production release for MongoDB {project.MajorVersion}");
 
         var mongoDownload = mongoVersion.Downloads.SingleOrDefault(x => x.Architecture == project.Architecture && x.Edition == project.Edition && x.Target == project.Target)
-            ?? throw new InvalidOperationException("Could not find MongoDB " + project.Architecture + ", " + project.Edition + ", " + project.Target);
+            ?? throw new InvalidOperationException($"Could not find MongoDB {project.Architecture}, {project.Edition}, {project.Target}");
 
         // Find MongoDB tools for the current project
         var toolsVersion = toolsVersions.Versions.FirstOrDefault()
             ?? throw new InvalidOperationException("Could not find MongoDB tools");
 
         var toolsDownload = toolsVersion.Downloads.SingleOrDefault(x => x.Architecture == project.Architecture && x.Name == project.Target)
-            ?? throw new InvalidOperationException("Could not find MongoDB tools " + project.Architecture + ", " + project.Target);
+            ?? throw new InvalidOperationException($"Could not find MongoDB tools {project.Architecture}, {project.Target}");
 
         FilePath? mongoArchiveFilePath = null;
         FilePath? toolsArchiveFilePath = null;
@@ -182,8 +186,8 @@ public sealed class DownloadMongoTask : AsyncFrostingTask<BuildContext>
             context.Log.Information($"Downloading MongoDB {mongoDownload.Archive.Url}");
             context.Log.Information($"Downloading MongoDB tools {toolsDownload.Archive.Url}");
 
-            var mongoArchiveFilePathTask = Task.Run(() => context.DownloadFile(mongoDownload.Archive.Url));
-            var toolsArchiveFilePathTask = Task.Run(() => context.DownloadFile(toolsDownload.Archive.Url));
+            var mongoArchiveFilePathTask = DownloadFileAsync(project.Name, mongoDownload.Archive.Url);
+            var toolsArchiveFilePathTask = DownloadFileAsync(project.Name, toolsDownload.Archive.Url);
 
             mongoArchiveFilePath = await mongoArchiveFilePathTask;
             toolsArchiveFilePath = await toolsArchiveFilePathTask;
@@ -192,8 +196,11 @@ public sealed class DownloadMongoTask : AsyncFrostingTask<BuildContext>
             context.Log.Information($"MongoDB tools downloaded to {toolsArchiveFilePath.FullPath}");
 
             // Verify SHA256 hash
-            EnsureHashMatch(context, mongoArchiveFilePath.FullPath, mongoDownload.Archive.Sha256);
-            EnsureHashMatch(context, toolsArchiveFilePath.FullPath, toolsDownload.Archive.Sha256);
+            var mongoHashTask = EnsureHashMatchAsync(context, mongoArchiveFilePath.FullPath, mongoDownload.Archive.Sha256);
+            var toolHashTask = EnsureHashMatchAsync(context, toolsArchiveFilePath.FullPath, toolsDownload.Archive.Sha256);
+
+            await mongoHashTask;
+            await toolHashTask;
 
             // Uncompress archive
             var projectDir = Directory.CreateDirectory(Path.Combine(Constants.RuntimesPath, project.Name, project.Rid, "native", "mongodb"));
@@ -201,8 +208,8 @@ public sealed class DownloadMongoTask : AsyncFrostingTask<BuildContext>
             var mongoUncompressDir = Directory.CreateDirectory(Path.Combine(projectDir.FullName, "community-server"));
             var toolsUncompressDir = Directory.CreateDirectory(Path.Combine(projectDir.FullName, "database-tools"));
 
-            Uncompress(context, mongoDownload.Archive.Url, mongoArchiveFilePath.FullPath, mongoUncompressDir.FullName);
-            Uncompress(context, toolsDownload.Archive.Url, toolsArchiveFilePath.FullPath, toolsUncompressDir.FullName);
+            await UncompressAsync(context, mongoDownload.Archive.Url, mongoArchiveFilePath.FullPath, mongoUncompressDir.FullName);
+            await UncompressAsync(context, toolsDownload.Archive.Url, toolsArchiveFilePath.FullPath, toolsUncompressDir.FullName);
 
             // Find mongod executable
             var mongoExecutable = context.Globber.GetFiles(Path.Combine(mongoUncompressDir.FullName, "*", "bin", project.MongoExecutableFileName)).FirstOrDefault()
@@ -260,97 +267,134 @@ public sealed class DownloadMongoTask : AsyncFrostingTask<BuildContext>
             const string placeholder = "<FullMongoVersion>PLACEHOLDER</FullMongoVersion>";
             var runtimeProjectCsprojPath = Path.Combine(Constants.RuntimesPath, "..", project.Name + ".csproj");
             var oldRuntimeCsprojContents = await File.ReadAllTextAsync(runtimeProjectCsprojPath);
-            var newRuntimeCsprojContents = oldRuntimeCsprojContents.Replace(placeholder, "<FullMongoVersion>" + mongoVersion.Version + "</FullMongoVersion>");
+            var newRuntimeCsprojContents = oldRuntimeCsprojContents.Replace(placeholder, "<FullMongoVersion>" + mongoVersion.Version + "</FullMongoVersion>", StringComparison.OrdinalIgnoreCase);
             await File.WriteAllTextAsync(runtimeProjectCsprojPath, newRuntimeCsprojContents);
-
-            // Replace "FullMongoVersion" property in all-in-one project
-            var aioProjectName = "MongoSandbox" + project.MajorVersion.ToString(CultureInfo.InvariantCulture);
-            var aioProjectCsprojPath = Path.Combine(Constants.SourceDirectoryPath, aioProjectName, aioProjectName + ".csproj");
-            var oldAioCsprojContents = await File.ReadAllTextAsync(aioProjectCsprojPath);
-            var newAioCsprojContents = oldAioCsprojContents.Replace(placeholder, "<FullMongoVersion>" + mongoVersion.Version + "</FullMongoVersion>");
-            await File.WriteAllTextAsync(aioProjectCsprojPath, newAioCsprojContents);
         }
         finally
         {
-            if (mongoArchiveFilePath != null)
+            // Preserve file when running locally to avoid re-downloading
+            if (IsRunningOnCI())
             {
-                File.Delete(mongoArchiveFilePath.FullPath);
-            }
+                if (mongoArchiveFilePath != null)
+                {
+                    File.Delete(mongoArchiveFilePath.FullPath);
+                }
 
-            if (toolsArchiveFilePath != null)
-            {
-                File.Delete(toolsArchiveFilePath.FullPath);
+                if (toolsArchiveFilePath != null)
+                {
+                    File.Delete(toolsArchiveFilePath.FullPath);
+                }
             }
         }
     }
 
-    private static MongoVersionsDto GetMongoVersions(BuildContext context)
+    private static async Task<MongoVersionsDto> GetMongoVersionsAsync(BuildContext context)
     {
-        // Parse JSON file containing all versions and OS-specific download URLs
-        const string currentJsonUrl = "https://s3.amazonaws.com/downloads.mongodb.org/current.json";
-        var jsonFilePath = context.DownloadFile(currentJsonUrl);
+        // Parse JSON file containing all versions and OS-specific MongoDB download URLs
+        // Reference: https://github.com/mongodb/mongo/blob/0a68308f0d39a928ed551f285ba72ca560c38576/buildscripts/package_test.py#L425
+        const string url = "https://downloads.mongodb.org/current.json";
+
+        context.Log.Verbose("Parsing {0}", url);
+
+        return await HttpClient.GetFromJsonAsync<MongoVersionsDto>(url)
+            ?? throw new Exception($"An error occured while parsing {url}");
+    }
+
+    private static async Task<ToolsVersionsDto> GetToolsVersionsAsync(BuildContext context)
+    {
+        // Parse JSON file containing all versions and OS-specific MongoDB tools download URLs
+        // Reference: https://github.com/mongodb/mongo/blob/0a68308f0d39a928ed551f285ba72ca560c38576/buildscripts/package_test.py#L429
+        const string url = "https://downloads.mongodb.org/tools/db/release.json";
+
+        context.Log.Information("Parsing {0}", url);
+
+        return await HttpClient.GetFromJsonAsync<ToolsVersionsDto>(url)
+            ?? throw new Exception($"An error occured while parsing {url}");
+    }
+
+    private static async Task<FilePath> DownloadFileAsync(string projectName, string url)
+    {
+        var downloadDirPath = Path.Combine(Path.GetTempPath(), "mongo-sandbox", "build", "downloads", projectName);
+        Directory.CreateDirectory(downloadDirPath);
+
+        var filePath = Path.Combine(downloadDirPath, Path.GetFileName(url));
+
+        if (File.Exists(filePath))
+        {
+            return filePath;
+        }
 
         try
         {
-            var currentJsonRaw = File.ReadAllText(jsonFilePath.FullPath);
-            return JsonSerializer.Deserialize<MongoVersionsDto>(currentJsonRaw) ?? throw new Exception("An error occured while parsing " + currentJsonUrl);
+            await using var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None);
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            using var response = await HttpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+            response.EnsureSuccessStatusCode();
+
+            await response.Content.CopyToAsync(fileStream);
         }
-        finally
+        catch
         {
-            File.Delete(jsonFilePath.FullPath);
+            QuietlyDeleteFile(filePath);
+            throw;
         }
+
+        return filePath;
     }
 
-    private static ToolsVersionsDto GetToolsVersions(BuildContext context)
+    private static void QuietlyDeleteFile(string tempFilePath)
     {
-        // Parse JSON file containing all versions and OS-specific download URLs
-        const string currentJsonUrl = "https://s3.amazonaws.com/downloads.mongodb.org/tools/db/release.json";
-        var jsonFilePath = context.DownloadFile(currentJsonUrl);
-
         try
         {
-            var currentJsonRaw = File.ReadAllText(jsonFilePath.FullPath);
-            return JsonSerializer.Deserialize<ToolsVersionsDto>(currentJsonRaw) ?? throw new Exception("An error occured while parsing " + currentJsonUrl);
+            File.Delete(tempFilePath);
         }
-        finally
+        catch (IOException)
         {
-            File.Delete(jsonFilePath.FullPath);
         }
     }
 
-    private static void EnsureHashMatch(BuildContext context, string filePath, string expectedHexHash)
+    private static async Task EnsureHashMatchAsync(BuildContext context, string filePath, string expectedHexHash)
     {
-        // Verify SHA256 hash
         context.Log.Information($"Verifying SHA256 hash of {filePath}...");
-        using (var archiveFileHasher = SHA256.Create())
-        using (var archiveFileStream = File.OpenRead(filePath))
-        {
-            var hashBytes = archiveFileHasher.ComputeHash(archiveFileStream);
-            var hashStr = Convert.ToHexString(hashBytes);
+        using var archiveFileHasher = SHA256.Create();
+        await using var archiveFileStream = File.OpenRead(filePath);
+        var hashBytes = await archiveFileHasher.ComputeHashAsync(archiveFileStream);
+        var hashStr = Convert.ToHexString(hashBytes);
 
-            if (!hashStr.Equals(expectedHexHash, StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidOperationException("An error occured during download, hashes don't match for " + filePath);
-            }
+        if (!hashStr.Equals(expectedHexHash, StringComparison.OrdinalIgnoreCase))
+        {
+            QuietlyDeleteFile(filePath);
+            throw new InvalidOperationException("An error occured during download, hashes don't match for " + filePath);
         }
     }
 
-    private static void Uncompress(BuildContext context, string archiveUrl, string archiveFilePath, string uncompressDir)
+    private static async Task UncompressAsync(BuildContext context, string archiveUrl, string archiveFilePath, string uncompressDirPath)
     {
-        context.Log.Information($"Uncompressing to {uncompressDir}");
+        context.Log.Information($"Uncompressing to {uncompressDirPath}");
 
-        if (archiveUrl.EndsWith(".zip"))
+        if (archiveUrl.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
         {
-            context.ZipUncompress(archiveFilePath, uncompressDir);
+            ZipFile.ExtractToDirectory(archiveFilePath, uncompressDirPath, overwriteFiles: true);
         }
-        else if (archiveUrl.EndsWith(".tgz"))
+        else if (archiveUrl.EndsWith(".tgz", StringComparison.OrdinalIgnoreCase))
         {
-            context.GZipUncompress(archiveFilePath, uncompressDir);
+            await Cli.Wrap("tar")
+                .WithArguments(["-xzf", archiveFilePath, "-C", uncompressDirPath])
+                .WithStandardOutputPipe(PipeTarget.ToDelegate(context.Log.Information))
+                .WithStandardErrorPipe(PipeTarget.ToDelegate(context.Log.Error))
+                .ExecuteAsync();
         }
         else
         {
             throw new InvalidOperationException("Unexpected file format for " + archiveUrl);
         }
+    }
+
+    private static bool IsRunningOnCI()
+    {
+        return !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("SYSTEM_TEAMFOUNDATIONCOLLECTIONURI")) // Azure Pipelines
+            || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("GITHUB_ACTIONS")) // GitHub Actions
+            || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TEAMCITY")); // TeamCity
     }
 }
 
@@ -398,16 +442,31 @@ public sealed class TestTask : FrostingTask<BuildContext>
         {
             context.DotNetRemoveReference(Constants.TestProjectPath, Constants.CoreProjectPath);
 
-            var packageNames = new[]
-            {
-                "MongoSandbox5",
-                "MongoSandbox6",
-                "MongoSandbox7",
-                "MongoSandbox8",
-            };
-
             var packageVersion = File.ReadAllText(Constants.PackageVersionPath);
             context.Log.Information($"Package version: {packageVersion}");
+
+            string? targetOS = null;
+
+            if (OperatingSystem.IsWindows())
+            {
+                targetOS = "windows";
+            }
+            else if (OperatingSystem.IsLinux())
+            {
+                targetOS = "ubuntu2204";
+            }
+            else if (OperatingSystem.IsMacOS())
+            {
+                targetOS = "macos";
+            }
+
+            var packageNames = DownloadMongoTask.Projects
+                .Where(project => project.Target == targetOS)
+                .Select(project => project.Name)
+                .ToList();
+
+            context.Log.Information("Adding MongoSandbox.Core package");
+            context.DotNetAddPackage(Constants.TestProjectPath, "MongoSandbox.Core", version: packageVersion, preRelease: true);
 
             foreach (var packageName in packageNames)
             {
@@ -435,7 +494,7 @@ public sealed class TestTask : FrostingTask<BuildContext>
                     context.DotNetTest(Constants.TestProjectPath, new DotNetTestSettings
                     {
                         Configuration = Constants.Release,
-                        Loggers = new[] { "console;verbosity=detailed", "trx" },
+                        Loggers = ["console;verbosity=detailed", "trx"],
                         NoBuild = true,
                         NoRestore = true,
                         NoLogo = true,
@@ -444,12 +503,13 @@ public sealed class TestTask : FrostingTask<BuildContext>
                 finally
                 {
                     context.Log.Information($"=============== Remove package {packageName} ===============");
-                    context.DotNetRemovePackage(Constants.TestProjectPath, packageName);
+                    context.DotNetRemovePackage(packageName, Constants.TestProjectPath);
                 }
             }
         }
         finally
         {
+            context.DotNetRemovePackage("MongoSandbox.Core", Constants.TestProjectPath);
             context.DotNetNuGetRemoveSource(outputSourceName);
             context.DotNetAddReference(Constants.TestProjectPath, Constants.CoreProjectPath);
         }
@@ -468,7 +528,7 @@ public sealed class PushTask : FrostingTask<BuildContext>
             {
                 ApiKey = context.NugetApiKey,
                 Source = context.NugetSource,
-                IgnoreSymbols = false
+                SkipDuplicate = true,
             });
         }
     }
@@ -476,6 +536,4 @@ public sealed class PushTask : FrostingTask<BuildContext>
 
 [TaskName("Default")]
 [IsDependentOn(typeof(TestTask))]
-public sealed class DefaultTask : FrostingTask
-{
-}
+public sealed class DefaultTask : FrostingTask;
